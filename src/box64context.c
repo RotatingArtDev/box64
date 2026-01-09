@@ -200,7 +200,27 @@ box64context_t *NewBox64Context(int argc)
     context->exit_bridge = AddBridge(context->system, NULL, NULL, 0, NULL);
     // get handle to box64 itself
     #ifndef STATICBUILD
+    #if defined(ANDROID) && defined(BOX64_AS_LIB)
+    // On Android, when Box64 is built as a shared library, we need to explicitly
+    // open the library containing Box64 symbols (libbox64.so)
+    // Using dladdr to find the library path
+    Dl_info info;
+    if (dladdr((void*)NewBox64Context, &info) && info.dli_fname) {
+        printf_log(LOG_DEBUG, "Opening Box64 library: %s\n", info.dli_fname);
+        context->box64lib = dlopen(info.dli_fname, RTLD_NOW|RTLD_GLOBAL);
+        if (!context->box64lib) {
+            printf_log(LOG_INFO, "Warning: Failed to dlopen %s: %s, using RTLD_DEFAULT\n", 
+                      info.dli_fname, dlerror());
+            // Fallback: we'll use RTLD_DEFAULT in library.c
+            context->box64lib = (void*)RTLD_DEFAULT;
+        }
+    } else {
+        printf_log(LOG_INFO, "Warning: Could not determine Box64 library path, using RTLD_DEFAULT\n");
+        context->box64lib = (void*)RTLD_DEFAULT;
+    }
+    #else
     context->box64lib = dlopen(NULL, RTLD_NOW|RTLD_GLOBAL);
+    #endif
     #endif
     context->dlprivate = NewDLPrivate();
 

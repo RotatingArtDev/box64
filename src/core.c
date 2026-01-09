@@ -995,20 +995,30 @@ int initialize(int argc, const char **argv, char** env, x64emu_t** emulator, elf
     }
     // check if box86 is present
     {
-        my_context->box86path = box_strdup(my_context->box64path);
-        #ifndef BOX32
-        if(strstr(my_context->box86path, "box64")) {
-            char* p = strrchr(my_context->box86path, '6');  // get the 6 of box64
-            p[0] = '8'; p[1] = '6'; // change 64 to 86
+        if(my_context->box64path) {
+            my_context->box86path = box_strdup(my_context->box64path);
+            #ifndef BOX32
+            if(strstr(my_context->box86path, "box64")) {
+                char* p = strrchr(my_context->box86path, '6');  // get the 6 of box64
+                p[0] = '8'; p[1] = '6'; // change 64 to 86
+            } else {
+                box_free(my_context->box86path);
+                my_context->box86path = ResolveFileSoft("box86", &my_context->box64_path);
+            }
+            if(my_context->box86path && !FileExist(my_context->box86path, IS_FILE)) {
+                box_free(my_context->box86path);
+                my_context->box86path = NULL;
+            }
+            #endif
         } else {
-            box_free(my_context->box86path);
+            #ifndef BOX32
             my_context->box86path = ResolveFileSoft("box86", &my_context->box64_path);
+            if(my_context->box86path && !FileExist(my_context->box86path, IS_FILE)) {
+                box_free(my_context->box86path);
+                my_context->box86path = NULL;
+            }
+            #endif
         }
-        if(my_context->box86path && !FileExist(my_context->box86path, IS_FILE)) {
-            box_free(my_context->box86path);
-            my_context->box86path = NULL;
-        }
-        #endif
     }
     box64_guest_name = strrchr(prog, '/');
     if (!box64_guest_name)
@@ -1060,8 +1070,13 @@ int initialize(int argc, const char **argv, char** env, x64emu_t** emulator, elf
     PrintEnvVariables(&box64env, LOG_INFO);
 
     for(int i=1; i<my_context->argc; ++i) {
-        my_context->argv[i] = box_strdup(argv[i+nextarg]);
-        printf_log(LOG_INFO, "argv[%i]=\"%s\"\n", i, my_context->argv[i]);
+        if(argv[i+nextarg]) {
+            my_context->argv[i] = box_strdup(argv[i+nextarg]);
+            printf_log(LOG_INFO, "argv[%i]=\"%s\"\n", i, my_context->argv[i]);
+        } else {
+            printf_log(LOG_NONE, "Warning: argv[%i] is NULL, skipping\n", i+nextarg);
+            my_context->argv[i] = NULL;
+        }
     }
 
     // Setup custom bash rcfile iff no args are present

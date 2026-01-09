@@ -3978,6 +3978,163 @@ EXPORT char* my_program_invocation_short_name = NULL;
 // ignoring this for now
 EXPORT char my___libc_single_threaded = 0;
 
+// glibc 2.32+ strerrorname_np - return error name string
+// Android bionic doesn't have this
+static const char* errname_table[] = {
+    [0] = "0",
+    [EPERM] = "EPERM", [ENOENT] = "ENOENT", [ESRCH] = "ESRCH", [EINTR] = "EINTR",
+    [EIO] = "EIO", [ENXIO] = "ENXIO", [E2BIG] = "E2BIG", [ENOEXEC] = "ENOEXEC",
+    [EBADF] = "EBADF", [ECHILD] = "ECHILD", [EAGAIN] = "EAGAIN", [ENOMEM] = "ENOMEM",
+    [EACCES] = "EACCES", [EFAULT] = "EFAULT", [ENOTBLK] = "ENOTBLK", [EBUSY] = "EBUSY",
+    [EEXIST] = "EEXIST", [EXDEV] = "EXDEV", [ENODEV] = "ENODEV", [ENOTDIR] = "ENOTDIR",
+    [EISDIR] = "EISDIR", [EINVAL] = "EINVAL", [ENFILE] = "ENFILE", [EMFILE] = "EMFILE",
+    [ENOTTY] = "ENOTTY", [ETXTBSY] = "ETXTBSY", [EFBIG] = "EFBIG", [ENOSPC] = "ENOSPC",
+    [ESPIPE] = "ESPIPE", [EROFS] = "EROFS", [EMLINK] = "EMLINK", [EPIPE] = "EPIPE",
+    [EDOM] = "EDOM", [ERANGE] = "ERANGE", [EDEADLK] = "EDEADLK", [ENAMETOOLONG] = "ENAMETOOLONG",
+    [ENOLCK] = "ENOLCK", [ENOSYS] = "ENOSYS", [ENOTEMPTY] = "ENOTEMPTY", [ELOOP] = "ELOOP",
+    [ENOMSG] = "ENOMSG", [EIDRM] = "EIDRM",
+#ifdef ENOSTR
+    [ENOSTR] = "ENOSTR", [ENODATA] = "ENODATA", [ETIME] = "ETIME", [ENOSR] = "ENOSR",
+#endif
+    [EREMOTE] = "EREMOTE", [ENOLINK] = "ENOLINK",
+    [EOVERFLOW] = "EOVERFLOW", [EILSEQ] = "EILSEQ", [EUSERS] = "EUSERS",
+    [ENOTSOCK] = "ENOTSOCK", [EDESTADDRREQ] = "EDESTADDRREQ", [EMSGSIZE] = "EMSGSIZE",
+    [EPROTOTYPE] = "EPROTOTYPE", [ENOPROTOOPT] = "ENOPROTOOPT", [EPROTONOSUPPORT] = "EPROTONOSUPPORT",
+    [ESOCKTNOSUPPORT] = "ESOCKTNOSUPPORT", [EOPNOTSUPP] = "EOPNOTSUPP", [EPFNOSUPPORT] = "EPFNOSUPPORT",
+    [EAFNOSUPPORT] = "EAFNOSUPPORT", [EADDRINUSE] = "EADDRINUSE", [EADDRNOTAVAIL] = "EADDRNOTAVAIL",
+    [ENETDOWN] = "ENETDOWN", [ENETUNREACH] = "ENETUNREACH", [ENETRESET] = "ENETRESET",
+    [ECONNABORTED] = "ECONNABORTED", [ECONNRESET] = "ECONNRESET", [ENOBUFS] = "ENOBUFS",
+    [EISCONN] = "EISCONN", [ENOTCONN] = "ENOTCONN", [ESHUTDOWN] = "ESHUTDOWN",
+    [ETOOMANYREFS] = "ETOOMANYREFS", [ETIMEDOUT] = "ETIMEDOUT", [ECONNREFUSED] = "ECONNREFUSED",
+    [EHOSTDOWN] = "EHOSTDOWN", [EHOSTUNREACH] = "EHOSTUNREACH", [EALREADY] = "EALREADY",
+    [EINPROGRESS] = "EINPROGRESS", [ESTALE] = "ESTALE",
+    [EDQUOT] = "EDQUOT", [ECANCELED] = "ECANCELED",
+#ifdef EOWNERDEAD
+    [EOWNERDEAD] = "EOWNERDEAD", [ENOTRECOVERABLE] = "ENOTRECOVERABLE",
+#endif
+};
+#define ERRNAME_TABLE_SIZE (sizeof(errname_table)/sizeof(errname_table[0]))
+
+EXPORT const char* my_strerrorname_np(x64emu_t* emu, int errnum)
+{
+    (void)emu;
+    if (errnum >= 0 && (size_t)errnum < ERRNAME_TABLE_SIZE && errname_table[errnum])
+        return errname_table[errnum];
+    return NULL;
+}
+
+// Error description table - avoid calling strerror which may not be properly bridged
+static const char* errdesc_table[] = {
+    [0] = "Success",
+    [EPERM] = "Operation not permitted", [ENOENT] = "No such file or directory",
+    [ESRCH] = "No such process", [EINTR] = "Interrupted system call",
+    [EIO] = "Input/output error", [ENXIO] = "No such device or address",
+    [E2BIG] = "Argument list too long", [ENOEXEC] = "Exec format error",
+    [EBADF] = "Bad file descriptor", [ECHILD] = "No child processes",
+    [EAGAIN] = "Resource temporarily unavailable", [ENOMEM] = "Cannot allocate memory",
+    [EACCES] = "Permission denied", [EFAULT] = "Bad address",
+    [ENOTBLK] = "Block device required", [EBUSY] = "Device or resource busy",
+    [EEXIST] = "File exists", [EXDEV] = "Invalid cross-device link",
+    [ENODEV] = "No such device", [ENOTDIR] = "Not a directory",
+    [EISDIR] = "Is a directory", [EINVAL] = "Invalid argument",
+    [ENFILE] = "Too many open files in system", [EMFILE] = "Too many open files",
+    [ENOTTY] = "Inappropriate ioctl for device", [ETXTBSY] = "Text file busy",
+    [EFBIG] = "File too large", [ENOSPC] = "No space left on device",
+    [ESPIPE] = "Illegal seek", [EROFS] = "Read-only file system",
+    [EMLINK] = "Too many links", [EPIPE] = "Broken pipe",
+    [EDOM] = "Numerical argument out of domain", [ERANGE] = "Numerical result out of range",
+    [EDEADLK] = "Resource deadlock avoided", [ENAMETOOLONG] = "File name too long",
+    [ENOLCK] = "No locks available", [ENOSYS] = "Function not implemented",
+    [ENOTEMPTY] = "Directory not empty", [ELOOP] = "Too many levels of symbolic links",
+    [ENOMSG] = "No message of desired type", [EIDRM] = "Identifier removed",
+    [EOVERFLOW] = "Value too large for defined data type",
+    [EILSEQ] = "Invalid or incomplete multibyte or wide character",
+    [ENOTSOCK] = "Socket operation on non-socket",
+    [EDESTADDRREQ] = "Destination address required", [EMSGSIZE] = "Message too long",
+    [EPROTOTYPE] = "Protocol wrong type for socket", [ENOPROTOOPT] = "Protocol not available",
+    [EPROTONOSUPPORT] = "Protocol not supported", [EOPNOTSUPP] = "Operation not supported",
+    [EAFNOSUPPORT] = "Address family not supported by protocol",
+    [EADDRINUSE] = "Address already in use", [EADDRNOTAVAIL] = "Cannot assign requested address",
+    [ENETDOWN] = "Network is down", [ENETUNREACH] = "Network is unreachable",
+    [ENETRESET] = "Network dropped connection on reset", [ECONNABORTED] = "Software caused connection abort",
+    [ECONNRESET] = "Connection reset by peer", [ENOBUFS] = "No buffer space available",
+    [EISCONN] = "Transport endpoint is already connected",
+    [ENOTCONN] = "Transport endpoint is not connected",
+    [ETIMEDOUT] = "Connection timed out", [ECONNREFUSED] = "Connection refused",
+    [EHOSTDOWN] = "Host is down", [EHOSTUNREACH] = "No route to host",
+    [EALREADY] = "Operation already in progress", [EINPROGRESS] = "Operation now in progress",
+    [ESTALE] = "Stale file handle", [EDQUOT] = "Disk quota exceeded",
+    [ECANCELED] = "Operation canceled",
+};
+#define ERRDESC_TABLE_SIZE (sizeof(errdesc_table)/sizeof(errdesc_table[0]))
+
+EXPORT const char* my_strerrordesc_np(x64emu_t* emu, int errnum)
+{
+    (void)emu;
+    // Use static table to avoid calling strerror (glibc function)
+    if (errnum >= 0 && (size_t)errnum < ERRDESC_TABLE_SIZE && errdesc_table[errnum])
+        return errdesc_table[errnum];
+    return "Unknown error";
+}
+
+// __readlinkat_chk - fortified readlinkat using direct syscall
+#ifndef __NR_readlinkat
+#define __NR_readlinkat 267  // ARM64 syscall number
+#endif
+
+EXPORT ssize_t my___readlinkat_chk(x64emu_t* emu, int dirfd, const char* pathname, char* buf, size_t bufsiz, size_t buflen)
+{
+    (void)emu;
+    if (bufsiz > buflen) {
+        // Buffer overflow - use direct syscall to write error and exit
+        // Avoid calling printf_log or abort which may have glibc dependencies
+        const char msg[] = "__readlinkat_chk: buffer overflow!\n";
+        syscall(__NR_write, 2, msg, sizeof(msg)-1);  // write to stderr
+        syscall(__NR_exit_group, 1);  // exit process
+        __builtin_unreachable();
+    }
+    // Use direct syscall instead of readlinkat() function
+    return syscall(__NR_readlinkat, dirfd, pathname, buf, bufsiz);
+}
+
+// Linux 5.x pidfd syscalls - stub implementations returning ENOSYS
+#ifndef __NR_pidfd_open
+#define __NR_pidfd_open 434
+#endif
+#ifndef __NR_pidfd_send_signal
+#define __NR_pidfd_send_signal 424
+#endif
+#ifndef __NR_pidfd_getfd
+#define __NR_pidfd_getfd 438
+#endif
+#ifndef __NR_open_tree
+#define __NR_open_tree 428
+#endif
+
+EXPORT int my_pidfd_open(x64emu_t* emu, pid_t pid, unsigned int flags)
+{
+    (void)emu;
+    return syscall(__NR_pidfd_open, pid, flags);
+}
+
+EXPORT int my_pidfd_send_signal(x64emu_t* emu, int pidfd, int sig, void* info, unsigned int flags)
+{
+    (void)emu;
+    return syscall(__NR_pidfd_send_signal, pidfd, sig, info, flags);
+}
+
+EXPORT int my_pidfd_getfd(x64emu_t* emu, int pidfd, int targetfd, unsigned int flags)
+{
+    (void)emu;
+    return syscall(__NR_pidfd_getfd, pidfd, targetfd, flags);
+}
+
+EXPORT int my_open_tree(x64emu_t* emu, int dirfd, const char* pathname, unsigned int flags)
+{
+    (void)emu;
+    return syscall(__NR_open_tree, dirfd, pathname, flags);
+}
+
 EXPORT char* secure_getenv(const char* name)
 {
     // ignoring the "secure" part for now
@@ -3995,10 +4152,23 @@ __attribute__((weak)) uint32_t arc4random()
 #endif
 
 #ifndef STATICBUILD
+#if defined(ANDROID)
+/* On Android, also load glibc_bridge for glibc-specific symbols */
+static void* g_glibc_bridge_handle = NULL;
+#define PRE_INIT\
+    if(1) {                                                    \
+        lib->w.lib = dlopen(NULL, RTLD_LAZY | RTLD_GLOBAL);    \
+        /* Also open glibc_bridge for glibc-compat functions */\
+        if(!g_glibc_bridge_handle) {                           \
+            g_glibc_bridge_handle = dlopen("libglibc_bridge.so", RTLD_LAZY | RTLD_GLOBAL);\
+        }                                                      \
+    } else
+#else
 #define PRE_INIT\
     if(1)                                                      \
         lib->w.lib = dlopen(NULL, RTLD_LAZY | RTLD_GLOBAL);    \
     else
+#endif
 #endif
 
 #if defined(ANDROID)

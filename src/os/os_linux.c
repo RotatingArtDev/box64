@@ -24,6 +24,10 @@
 #include "librarian.h"
 #include "emu/x64emu_private.h"
 
+#ifdef ANDROID
+#include <android/log.h>
+#endif
+
 int GetTID(void)
 {
     return syscall(SYS_gettid);
@@ -208,6 +212,16 @@ static void checkFtrace()
 
 void PrintfFtrace(int prefix, const char* fmt, ...)
 {
+#ifdef ANDROID
+    // On Android, use __android_log_print to output to logcat
+    static const char* TAG = "Box64";
+    char tmp[8192];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(tmp, sizeof(tmp), fmt, args);
+    va_end(args);
+    __android_log_print(ANDROID_LOG_INFO, TAG, "%s", tmp);
+#else
     if (ftrace_name) {
         checkFtrace();
     } else if(trace_fd==-1)
@@ -232,6 +246,7 @@ void PrintfFtrace(int prefix, const char* fmt, ...)
     fflush(ftrace);
     va_end(args);
     write(trace_fd, tmp, strlen(tmp));
+#endif
 }
 
 void* GetEnv(const char* name)

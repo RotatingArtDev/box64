@@ -242,10 +242,7 @@ typedef struct __jmp_buf_tag_s {
     jump_buff_x64_t __jmpbuf;
     int              __mask_was_saved;
     #ifdef ANDROID
-    union {
-      sigset_t         __saved_mask;
-      sigset64_t         __saved_mask64;
-    };
+    sigset_t         __saved_mask;  // Bionic's sigset_t is already 64-bit
     #else
     __sigset_t       __saved_mask;
     #endif

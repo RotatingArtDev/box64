@@ -187,6 +187,9 @@ typedef struct x64_mcontext_s
 // /!\ signal sig_set is different than glibc __sig_set
 #ifndef ANDROID
 #define _NSIG_WORDS (1024 / (sizeof(unsigned long int)*8))
+#else
+// Android/Bionic: _NSIG is typically 64, so _NSIG_WORDS = 1 (for 64-bit unsigned long)
+#define _NSIG_WORDS (1024 / (sizeof(unsigned long int)*8))
 #endif
 
 typedef struct {

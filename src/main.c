@@ -1,6 +1,12 @@
 #include "core.h"
 
-int main(int argc, const char **argv, char **env) {
+#ifdef BOX64_AS_LIB
+    #define MAIN_EXPORT __attribute__((visibility("default")))
+#else
+    #define MAIN_EXPORT
+#endif
+
+MAIN_EXPORT int main(int argc, const char **argv, char **env) {
 
     x64emu_t* emu = NULL;
     elfheader_t* elf_header = NULL;

@@ -340,7 +340,7 @@ else()
     set(DYNAREC OFF)
 endif()
 
-set(BOX64_ROOT ${CMAKE_SOURCE_DIR})
+set(BOX64_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_definitions(-std=gnu11 -funwind-tables -fvisibility=hidden)
 
@@ -363,6 +363,17 @@ if(BOX32)
     include_directories(
         "${BOX64_ROOT}/src/wrapped32/generated"
     )
+endif()
+# Android linkernsbypass library include path
+if(ANDROID)
+    # Get the liblinkernsbypass path relative to box64 source dir
+    # box64 is now in app/src/main/cpp/box64, so liblinkernsbypass is at ../liblinkernsbypass
+    get_filename_component(LINKERNSBYPASS_INCLUDE_DIR
+        "${BOX64_ROOT}/../liblinkernsbypass" ABSOLUTE)
+    if(EXISTS "${LINKERNSBYPASS_INCLUDE_DIR}")
+        include_directories("${LINKERNSBYPASS_INCLUDE_DIR}")
+        message(STATUS "Added liblinkernsbypass include: ${LINKERNSBYPASS_INCLUDE_DIR}")
+    endif()
 endif()
 
 # git_head.h is a generated file
@@ -1201,16 +1212,61 @@ add_dependencies(generate_git_head_target functions_list)
 
 add_library(interpreter OBJECT ${INTERPRETER})
 
-add_library(mainobj OBJECT ${OS_LINUX_SRC} ${ELFLOADER_SRC} ${WRAPPEDS} ${WRAPPEDS32})
+# 当编译为共享库时，mainobj需要是STATIC库才能正确链接所有符号
+if(BOX64_AS_LIBRARY)
+    add_library(mainobj STATIC ${OS_LINUX_SRC} ${ELFLOADER_SRC} ${WRAPPEDS} ${WRAPPEDS32})
+else()
+    add_library(mainobj OBJECT ${OS_LINUX_SRC} ${ELFLOADER_SRC} ${WRAPPEDS} ${WRAPPEDS32})
+endif()
 add_dependencies(mainobj generate_git_head_target)
 
-add_executable(${BOX64})
-target_link_libraries(${BOX64} mainobj)
-set_target_properties(${BOX64} PROPERTIES ENABLE_EXPORTS ON)
-add_dependencies(${BOX64} WRAPPERS)
-if(BOX32)
-    add_dependencies(${BOX64} WRAPPERS32)
-endif()
+# 根据BOX64_AS_LIBRARY选项决定编译为库还是可执行文件
+if(BOX64_AS_LIBRARY)
+    # 编译为共享库（用于Android JNI集成）
+    add_definitions(-DBOX64_AS_LIB)
+    
+    # 创建共享库 libbox64.so，包含 interpreter 对象文件
+    add_library(${BOX64} SHARED $<TARGET_OBJECTS:interpreter>)
+    
+    # 使用 --whole-archive 链接 mainobj，确保所有符号（包括 initialize）都被包含并导出
+    target_link_libraries(${BOX64}
+        -Wl,--whole-archive
+        mainobj
+        -Wl,--no-whole-archive
+    )
+    if(DYNAREC)
+        target_link_libraries(${BOX64} dynarec)
+    endif()
+    
+    # 链接基础库（Android 需要 log 库）
+    target_link_libraries(${BOX64} c m dl log)
+    
+    # Android 需要链接 linkernsbypass 绕过命名空间限制
+    if(ANDROID)
+        get_filename_component(LINKERNSBYPASS_LIB_DIR
+            "${BOX64_ROOT}/../liblinkernsbypass" ABSOLUTE)
+        if(EXISTS "${LINKERNSBYPASS_LIB_DIR}")
+            target_link_libraries(${BOX64} linkernsbypass)
+        endif()
+    endif()
+    
+    # 设置接口链接库为空，防止 mainobj 和 dynarec 传递到其他 target
+    set_target_properties(${BOX64} PROPERTIES INTERFACE_LINK_LIBRARIES "")
+    
+    # 设置导出属性
+    set_target_properties(${BOX64} PROPERTIES
+        ENABLE_EXPORTS ON
+        C_VISIBILITY_PRESET default
+        CXX_VISIBILITY_PRESET default
+    )
+    
+    message(STATUS "Box64 library mode: building libbox64.so")
+else()
+    # 编译为可执行文件（标准Box64）
+    add_executable(${BOX64})
+    target_link_libraries(${BOX64} mainobj)
+    set_target_properties(${BOX64} PROPERTIES ENABLE_EXPORTS ON)
+
 #add_dependencies(${BOX64} PRINTER)
 #target_link_libraries(${BOX64} c m dl rt pthread resolv)
 if(STATICBUILD)
@@ -1221,7 +1277,8 @@ else()
         if(TERMUX)
         target_link_libraries(${BOX64} c m dl android-sysv-semaphore)
         else()
-        target_link_libraries(${BOX64} c m dl)
+        # Android 需要链接 log 库
+        target_link_libraries(${BOX64} c m dl log)
         endif()
     else()
 	    set_property(TARGET ${BOX64} APPEND_STRING PROPERTY LINK_FLAGS "-Wl,--no-as-needed -lc -lm -ldl -lrt -lpthread -lresolv -lutil -Wl,--as-needed -pthread ")
@@ -1232,6 +1289,8 @@ if(DYNAREC)
     target_link_libraries(${BOX64} dynarec)
 endif()
 target_link_libraries(${BOX64} interpreter)
+endif()
+add_dependencies(${BOX64} WRAPPERS)
 
 if(${CMAKE_VERSION} VERSION_LESS "3.13")
     if(NOT NOLOADADDR)

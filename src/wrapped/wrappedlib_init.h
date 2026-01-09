@@ -5,6 +5,29 @@
 #include "debug.h"
 #include "librarian/library_inner.h"
 
+#ifdef __ANDROID__
+/* ============================================================================
+ * glibc_bridge integration for Android
+ * 
+ * When Box64 runs as a Bionic native library, we still want to use glibc_bridge's
+ * library redirection (SDL2 -> libSDL2.so, GL -> gl4es, ICU -> Android ICU, etc.)
+ * 
+ * This allows glibc_bridge to intercept dlopen calls from Box64's wrapped libraries.
+ * ============================================================================ */
+typedef void* (*glibc_bridge_dlopen_fn)(const char* filename, int flags);
+extern glibc_bridge_dlopen_fn box64_glibc_bridge_dlopen_hook;
+
+static inline void* box64_native_dlopen(const char* filename, int flags) {
+    if (box64_glibc_bridge_dlopen_hook) {
+        return box64_glibc_bridge_dlopen_hook(filename, flags);
+    }
+    return dlopen(filename, flags);
+}
+#define BOX64_DLOPEN(name, flags) box64_native_dlopen(name, flags)
+#else
+#define BOX64_DLOPEN(name, flags) dlopen(name, flags)
+#endif
+
 #define FUNC3(M,N) wrapped##M##N
 #define FUNC2(M,N) FUNC3(M,N)
 #define FUNC(N) FUNC2(LIBNAME,N)
@@ -174,13 +197,13 @@ int FUNC(_init)(library_t* lib, box64context_t* box64)
 #endif
     {
 #ifndef STATICBUILD
-        lib->w.lib = dlopen(MAPNAME(Name), RTLD_LAZY | RTLD_GLOBAL);
+        lib->w.lib = BOX64_DLOPEN(MAPNAME(Name), RTLD_LAZY | RTLD_GLOBAL);
         if(!lib->w.lib) {
 #ifdef ALTNAME
-            lib->w.lib = dlopen(ALTNAME, RTLD_LAZY | RTLD_GLOBAL);
+            lib->w.lib = BOX64_DLOPEN(ALTNAME, RTLD_LAZY | RTLD_GLOBAL);
             if(!lib->w.lib) {
 #ifdef ALTNAME2
-                lib->w.lib = dlopen(ALTNAME2, RTLD_LAZY | RTLD_GLOBAL);
+                lib->w.lib = BOX64_DLOPEN(ALTNAME2, RTLD_LAZY | RTLD_GLOBAL);
                 if(!lib->w.lib)
 #endif
 #endif

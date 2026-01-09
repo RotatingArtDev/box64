@@ -20,6 +20,49 @@
 #include "elfloader.h"
 #include "elfs/elfloader_private.h"
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#define GLIBC_BRIDGE_LOG_TAG "BOX64_GLIBC_BRIDGE"
+#define GLIBC_BRIDGE_LOGI(...) __android_log_print(ANDROID_LOG_INFO, GLIBC_BRIDGE_LOG_TAG, __VA_ARGS__)
+
+// Android linker namespace bypass for symbol resolution
+#include "android_linker_ns.h"
+#define ANDROID_INIT_BYPASS \
+    do { \
+        if(linkernsbypass_load_status()) { \
+            GLIBC_BRIDGE_LOGI("✓ Android linkernsbypass initialized successfully"); \
+        } else { \
+            GLIBC_BRIDGE_LOGI("Android linkernsbypass not available (API < 28)"); \
+        } \
+    } while(0)
+
+/* ============================================================================
+ * glibc_bridge integration for Android
+ * 
+ * When Box64 runs as a Bionic native library, we still want to use glibc_bridge's
+ * library redirection (SDL2 -> libSDL2.so, GL -> gl4es, etc.) for compatibility.
+ * 
+ * This hook allows glibc_bridge to intercept dlopen calls from Box64.
+ * ============================================================================ */
+typedef void* (*glibc_bridge_dlopen_fn)(const char* filename, int flags);
+typedef void* (*glibc_bridge_dlsym_fn)(void* handle, const char* symbol);
+
+/* Global hook for wrapped library init (used in wrappedlib_init.h) */
+glibc_bridge_dlopen_fn box64_glibc_bridge_dlopen_hook = NULL;
+
+static glibc_bridge_dlopen_fn g_glibc_bridge_dlopen = NULL;
+static glibc_bridge_dlsym_fn g_glibc_bridge_dlsym = NULL;
+
+/* Called by the launcher to set up the glibc_bridge hooks */
+__attribute__((visibility("default")))
+void box64_set_glibc_bridge_hooks(glibc_bridge_dlopen_fn dlopen_hook, glibc_bridge_dlsym_fn dlsym_hook) {
+    g_glibc_bridge_dlopen = dlopen_hook;
+    g_glibc_bridge_dlsym = dlsym_hook;
+    box64_glibc_bridge_dlopen_hook = dlopen_hook;  /* Also set the wrappedlib_init hook */
+    GLIBC_BRIDGE_LOGI("glibc_bridge hooks installed: dlopen=%p, dlsym=%p", dlopen_hook, dlsym_hook);
+}
+#endif
+
 typedef struct dllib_s {
     library_t*  lib;
     int         count;
@@ -599,10 +642,18 @@ void closeAllDLOpened()
 //extern void* _dlfcn_hook;
 #endif
 
+#ifdef __ANDROID__
+#define PRE_INIT\
+    if(1) {                                                         \
+        lib->w.lib = dlopen(NULL, RTLD_LAZY | RTLD_GLOBAL);        \
+        ANDROID_INIT_BYPASS;                                        \
+    } else
+#else
 #define PRE_INIT\
     if(1)                                                           \
         lib->w.lib = dlopen(NULL, RTLD_LAZY | RTLD_GLOBAL);    \
     else
+#endif
 
 #define CUSTOM_FINI \
     closeAllDLOpened();

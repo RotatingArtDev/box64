@@ -22,7 +22,23 @@
 
 #include "generated/wrappedsdl2defs.h"
 
+// SDL2 initialization flags (from box64droid)
+#define SDL_INIT_TIMER          0x00000001
+#define SDL_INIT_AUDIO          0x00000010
+#define SDL_INIT_VIDEO          0x00000020
+#define SDL_INIT_JOYSTICK       0x00000200
+#define SDL_INIT_HAPTIC         0x00001000
+#define SDL_INIT_GAMECONTROLLER 0x00002000
+#define SDL_INIT_EVENTS         0x00004000
+#define SDL_INIT_SENSOR         0x00008000
+#define SDL_INIT_NOPARACHUTE    0x00100000
+
+// Use Android native SDL2 (ARM64) through Box64 wrapping
+#ifdef __ANDROID__
+const char* sdl2Name = "libSDL2.so";
+#else
 const char* sdl2Name = "libSDL2-2.0.so.0";
+#endif
 #define LIBNAME sdl2
 static void* my_glhandle = NULL;
 // DL functions from wrappedlibdl.c
@@ -899,6 +915,77 @@ EXPORT void my2_SDL_FilterEvents(x64emu_t* emu, void* filter, void* userdata) {
     my->SDL_FilterEvents(my_FilterEvents_callback, &data);
 }
 
+// Android: SDL_InitSubSystem wrapper - logs and passes through
+EXPORT int my2_SDL_InitSubSystem(uint32_t flags)
+{
+    printf_log(LOG_INFO, "[SDL_FIX] SDL_InitSubSystem called with flags = 0x%08x\n", flags);
+    
+    if (flags & SDL_INIT_AUDIO) {
+        printf_log(LOG_INFO, "[SDL_FIX]   >>> SDL_INIT_AUDIO requested\n");
+    }
+    if (flags & SDL_INIT_VIDEO) {
+        printf_log(LOG_INFO, "[SDL_FIX]   >>> SDL_INIT_VIDEO requested\n");
+    }
+    
+    int result = my->SDL_InitSubSystem(flags);
+    printf_log(LOG_INFO, "[SDL_FIX]   SDL_InitSubSystem returned: %d\n", result);
+    return result;
+}
+
+// Custom SDL_Init wrapper to setup JNI for Box64 thread
+// This is CRITICAL for Android - ensures JNI environment is ready before SDL tries to use it
+EXPORT int my2_SDL_Init(x64emu_t* emu, uint32_t flags)
+{
+    static int first_call = 1;
+    static int audio_preinitialized = 0;
+    
+    printf_log(LOG_INFO, "[SDL_FIX] my2_SDL_Init called with flags = 0x%08x\n", flags);
+    
+    if(first_call) {
+        first_call = 0;
+        
+        // Try to get JNIEnv to trigger JNI thread setup
+        // This ensures the JNI environment is attached to this thread BEFORE
+        // SDL_getenv tries to call Android_JNI_GetManifestEnvironmentVariables
+        void* (*sdl_android_getjnienv)() = (void*(*)())dlsym(my_context->sdl2lib->w.lib, "SDL_AndroidGetJNIEnv");
+        if(sdl_android_getjnienv) {
+            void* env = sdl_android_getjnienv();
+            printf_log(LOG_INFO, "[SDL_FIX] SDL_AndroidGetJNIEnv returned %p\n", env);
+        } else {
+            printf_log(LOG_INFO, "[SDL_FIX] SDL_AndroidGetJNIEnv not found\n");
+        }
+        
+        // Call SDL_SetMainReady to bypass SDL_main requirement
+        // This tells SDL that we're not using SDL_main, which is the case
+        // when running through Box64
+        void (*sdl_setmainready)() = (void(*)())dlsym(my_context->sdl2lib->w.lib, "SDL_SetMainReady");
+        if(sdl_setmainready) {
+            sdl_setmainready();
+            printf_log(LOG_INFO, "[SDL_FIX] SDL_SetMainReady called\n");
+        }
+        
+#ifdef __ANDROID__
+        // Pre-initialize native SDL audio system before game calls SDL_Init
+        // This ensures the native SDL audio subsystem is fully set up before
+        // Box64 tries to create audio callback bridges
+        printf_log(LOG_INFO, "[SDL_AUDIO] Pre-initializing native SDL audio subsystem...\n");
+        int audio_init_result = my->SDL_Init(SDL_INIT_AUDIO);
+        if(audio_init_result == 0) {
+            printf_log(LOG_INFO, "[SDL_AUDIO] ✓ Native SDL audio pre-initialized successfully\n");
+            audio_preinitialized = 1;
+        } else {
+            printf_log(LOG_INFO, "[SDL_AUDIO] ✗ Native SDL audio pre-initialization failed: %d\n", audio_init_result);
+        }
+#endif
+    }
+    
+    // Call the real SDL_Init with the game's requested flags
+    int ret = my->SDL_Init(flags);
+    printf_log(LOG_INFO, "[SDL_FIX] SDL_Init(0x%x) returned %d (audio_preinitialized=%d)\n", 
+               flags, ret, audio_preinitialized);
+    return ret;
+}
+
 #undef HAS_MY
 
 #define ALTMY my2_
@@ -919,5 +1006,7 @@ EXPORT void my2_SDL_FilterEvents(x64emu_t* emu, void* filter, void* userdata) {
     my_context->sdl2lib = NULL;                                 \
     my_context->sdl2allocrw = NULL;                             \
     my_context->sdl2freerw = NULL;
+
+/* Note: Android uses libSDL2.so as primary name, no ALTNAME needed */
 
 #include "wrappedlib_init.h"

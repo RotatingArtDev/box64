@@ -191,6 +191,7 @@
 #() cFpp
 #() wFpi
 #() iFEi
+#() iFEu
 #() iFEf
 #() iFEd
 #() iFEL
@@ -522,6 +523,7 @@
 #() cFpdp
 #() wFppp
 #() iFEiw
+#() iFEiu
 #() iFEip
 #() iFEWW
 #() iFEup
@@ -1086,8 +1088,10 @@
 #() vFHHpi
 #() cFpiii
 #() cFpipp
+#() iFEiiu
 #() iFEiip
 #() iFEiiN
+#() iFEipu
 #() iFEipp
 #() iFEipV
 #() iFEipA
@@ -1782,6 +1786,7 @@
 #() vFppppu
 #() vFppppL
 #() vFppppp
+#() iFEiipu
 #() iFEiipp
 #() iFEiipV
 #() iFEiipA
@@ -2593,6 +2598,7 @@
 #() fFlfplpl
 #() fFpppppL
 #() dFpppppL
+#() lFEippLL
 #() lFEpippp
 #() lFipipLu
 #() lFipLipu
@@ -3860,6 +3866,7 @@
 #() iFEpuvvppp -> iFEpuppp
 wrappedalure:
 wrappedalut:
+wrappedandroidshmem:
 wrappedanl:
 wrappedatk:
 - vFp:
@@ -5020,6 +5027,9 @@ wrappedlibc:
   - sysconf
 - LFL:
   - getauxval
+- pFi:
+  - strerrordesc_np
+  - strerrorname_np
 - pFL:
   - _ZGTtnaX
   - _ZGTtnam
@@ -5047,6 +5057,8 @@ wrappedlibc:
 - vFpA:
   - vwarn
   - vwarnx
+- iFiu:
+  - pidfd_open
 - iFip:
   - fstat
   - fstat64
@@ -5121,6 +5133,8 @@ wrappedlibc:
 - vFppL:
   - _ITM_memcpyRnWt
   - _ITM_memcpyRtWn
+- iFiiu:
+  - pidfd_getfd
 - iFiip:
   - __fxstat
   - __fxstat64
@@ -5128,6 +5142,8 @@ wrappedlibc:
   - __fcntl
   - fcntl
   - fcntl64
+- iFipu:
+  - open_tree
 - iFipp:
   - __lxstat
   - __lxstat64
@@ -5222,6 +5238,8 @@ wrappedlibc:
   - epoll_ctl
 - iFiiiN:
   - semctl
+- iFiipu:
+  - pidfd_send_signal
 - iFiipV:
   - __dprintf_chk
 - iFiipA:
@@ -5290,6 +5308,8 @@ wrappedlibc:
   - __sprintf_chk
 - iFpuppp:
   - __vswprintf_chk
+- lFippLL:
+  - __readlinkat_chk
 - pFpLLiN:
   - mremap
 - pFppLLp:
@@ -6407,6 +6427,9 @@ wrappedsdl2:
   - SDL_HasSSE3
   - SDL_HasSSE41
   - SDL_HasSSE42
+- iFu:
+  - SDL_Init
+  - SDL_InitSubSystem
 - iFp:
   - SDL_RWclose
   - SDL_RemoveTimer

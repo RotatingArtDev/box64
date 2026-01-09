@@ -284,6 +284,9 @@ GO("libzstd.so.1", zstd)
 GO("libzstd.so", zstd)
 
 GO("libc.so", libc)
+// libgcc_s - 不包装，直接使用 x64 版本（需要 _Unwind_* 等符号）
+// GO("libgcc_s.so.1", libc)  // 注释掉：libc wrapper 没有实现 _Unwind_Find_FDE 等
+// GO("libgcc_s.so", libc)    // 注释掉：让 Box64 加载真正的 x64 libgcc_s.so
 GO("libm.so", libm)
 GO("libbsd.so", libbsd)
 GO("libdl.so", libdl)
@@ -389,6 +392,7 @@ GO("libandroid-shmem.so", androidshmem)
 #endif
 
 GO("libc.so.6", libc)
+// GO("libgcc_s.so.1", libc)  // 注释掉：让 Box64 加载真正的 x64 libgcc_s.so（需要 _Unwind_* 符号）
 GO("libm.so.6", libm)
 GO("libdl.so.2", libdl)
 GO("libpthread.so.0", libpthread)

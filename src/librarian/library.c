@@ -29,6 +29,22 @@
 #include "library_inner.h"
 
 #include "wrappedlibs.h"
+
+#if defined(ANDROID) && defined(BOX64_AS_LIB)
+/* glibc_bridge symbol resolution - provides glibc-compatible wrappers */
+typedef void* (*glibc_bridge_resolve_symbol_fn)(const char* name);
+static glibc_bridge_resolve_symbol_fn g_glibc_bridge_resolve = NULL;
+static int g_glibc_bridge_resolve_init = 0;
+
+static inline glibc_bridge_resolve_symbol_fn get_glibc_bridge_resolver(void) {
+    if (!g_glibc_bridge_resolve_init) {
+        g_glibc_bridge_resolve = (glibc_bridge_resolve_symbol_fn)dlsym(RTLD_DEFAULT, "glibc_bridge_resolve_symbol");
+        g_glibc_bridge_resolve_init = 1;
+    }
+    return g_glibc_bridge_resolve;
+}
+#endif
+
 // create the native lib list
 #define GO(P, N) int wrapped##N##_init(library_t* lib, box64context_t *box64); \
                  void wrapped##N##_fini(library_t* lib);
@@ -844,6 +860,12 @@ static int getSymbolInDataMaps(library_t*lib, const char* name, int noweak, uint
         symbol = (void*)kh_value(lib->w.mydatamap, k).addr;
         #else
         symbol = dlsym(my_context->box64lib, buff);
+        // On Android with shared library mode, try RTLD_DEFAULT as fallback
+        #if defined(ANDROID) && defined(BOX64_AS_LIB)
+        if(!symbol && my_context->box64lib != (void*)RTLD_DEFAULT) {
+            symbol = dlsym(RTLD_DEFAULT, buff);
+        }
+        #endif
         #endif
         if(!symbol)
             printf_log(LOG_NONE, "Warning, data %s not found\n", buff);
@@ -879,7 +901,14 @@ static int getSymbolInSymbolMaps(library_t*lib, const char* name, int noweak, ui
             #ifdef STATICBUILD
             symbol = (void*)s->addr;
             #else
+            // Use box64lib handle, which may be a real dlopen handle or RTLD_DEFAULT
             symbol = dlsym(my_context->box64lib, buff);
+            // On Android with shared library mode, try RTLD_DEFAULT as fallback
+            #if defined(ANDROID) && defined(BOX64_AS_LIB)
+            if(!symbol && my_context->box64lib != (void*)RTLD_DEFAULT) {
+                symbol = dlsym(RTLD_DEFAULT, buff);
+            }
+            #endif
             #endif
             if(!symbol) {
                 printf_log(LOG_NONE, "Warning, function %s not found\n", buff);
@@ -907,7 +936,14 @@ static int getSymbolInSymbolMaps(library_t*lib, const char* name, int noweak, ui
             #ifdef STATICBUILD
             symbol = (void*)s->addr;
             #else
+            // Use box64lib handle, which may be a real dlopen handle or RTLD_DEFAULT
             symbol = dlsym(my_context->box64lib, buff);
+            // On Android with shared library mode, try RTLD_DEFAULT as fallback
+            #if defined(ANDROID) && defined(BOX64_AS_LIB)
+            if(!symbol && my_context->box64lib != (void*)RTLD_DEFAULT) {
+                symbol = dlsym(RTLD_DEFAULT, buff);
+            }
+            #endif
             #endif
             if(!symbol) {
                 printf_log(LOG_NONE, "Warning, function %s not found\n", buff);
@@ -944,6 +980,13 @@ static int getSymbolInSymbolMaps(library_t*lib, const char* name, int noweak, ui
                 strcat(newname, name);
                 symbol = GetNativeSymbolUnversioned(lib->w.lib, newname);
             }
+            #if defined(ANDROID) && defined(BOX64_AS_LIB)
+            // Fallback to glibc_bridge for glibc-specific functions
+            if(!symbol) {
+                glibc_bridge_resolve_symbol_fn resolver = get_glibc_bridge_resolver();
+                if(resolver) symbol = resolver(name);
+            }
+            #endif
             #endif
             if(!symbol) {
                 printf_dump(LOG_INFO, "Warning, function %s not found in lib %s\n", name, lib->name);
@@ -972,7 +1015,14 @@ static int getSymbolInSymbolMaps(library_t*lib, const char* name, int noweak, ui
                 #ifdef STATICBUILD
                 symbol = (void*)s->addr;
                 #else
+                // Use box64lib handle, which may be a real dlopen handle or RTLD_DEFAULT
                 symbol = dlsym(my_context->box64lib, buff);
+                // On Android with shared library mode, try RTLD_DEFAULT as fallback
+                #if defined(ANDROID) && defined(BOX64_AS_LIB)
+                if(!symbol && my_context->box64lib != (void*)RTLD_DEFAULT) {
+                    symbol = dlsym(RTLD_DEFAULT, buff);
+                }
+                #endif
                 #endif
                 if(!symbol) {
                     printf_log(LOG_NONE, "Warning, function %s not found\n", buff);
@@ -1008,6 +1058,13 @@ static int getSymbolInSymbolMaps(library_t*lib, const char* name, int noweak, ui
                     strcat(newname, name);
                     symbol = GetNativeSymbolUnversioned(lib->w.lib, newname);
                 }
+                #if defined(ANDROID) && defined(BOX64_AS_LIB)
+                // Fallback to glibc_bridge for glibc-specific functions
+                if(!symbol) {
+                    glibc_bridge_resolve_symbol_fn resolver = get_glibc_bridge_resolver();
+                    if(resolver) symbol = resolver(name);
+                }
+                #endif
                 #endif
                 if(!symbol) {
                     printf_dump(LOG_INFO, "Warning, function %s not found in lib %s\n", name, lib->name);
