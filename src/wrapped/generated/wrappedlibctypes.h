@@ -54,10 +54,12 @@ typedef void (*vFppL_t)(void*, void*, uintptr_t);
 typedef int32_t (*iFiiu_t)(int32_t, int32_t, uint32_t);
 typedef int32_t (*iFiip_t)(int32_t, int32_t, void*);
 typedef int32_t (*iFiiN_t)(int32_t, int32_t, ...);
+typedef int32_t (*iFipi_t)(int32_t, void*, int32_t);
 typedef int32_t (*iFipu_t)(int32_t, void*, uint32_t);
 typedef int32_t (*iFipp_t)(int32_t, void*, void*);
 typedef int32_t (*iFipV_t)(int32_t, void*, ...);
 typedef int32_t (*iFipA_t)(int32_t, void*, va_list);
+typedef int32_t (*iFpii_t)(void*, int32_t, int32_t);
 typedef int32_t (*iFpLi_t)(void*, uintptr_t, int32_t);
 typedef int32_t (*iFpLp_t)(void*, uintptr_t, void*);
 typedef int32_t (*iFppi_t)(void*, void*, int32_t);
@@ -137,11 +139,14 @@ typedef int32_t (*iFppipppp_t)(void*, void*, int32_t, void*, void*, void*, void*
 	GO(_setjmp, iFp_t) \
 	GO(atexit, iFp_t) \
 	GO(getcontext, iFp_t) \
+	GO(mkstemp, iFp_t) \
+	GO(mkstemp64, iFp_t) \
 	GO(register_printf_type, iFp_t) \
 	GO(setcontext, iFp_t) \
 	GO(setjmp, iFp_t) \
 	GO(stime, iFp_t) \
 	GO(uname, iFp_t) \
+	GO(unlink, iFp_t) \
 	GO(_ITM_RU1, CFp_t) \
 	GO(_ITM_RU4, uFp_t) \
 	GO(_ITM_RU8, UFp_t) \
@@ -177,6 +182,10 @@ typedef int32_t (*iFppipppp_t)(void*, void*, int32_t, void*, void*, void*, void*
 	GO(setrlimit, iFup_t) \
 	GO(__sigsetjmp, iFpi_t) \
 	GO(backtrace, iFpi_t) \
+	GO(mkostemp, iFpi_t) \
+	GO(mkostemp64, iFpi_t) \
+	GO(mkstemps, iFpi_t) \
+	GO(mkstemps64, iFpi_t) \
 	GO(sigsetjmp, iFpi_t) \
 	GO(delete_module, iFpu_t) \
 	GO(munmap, iFpL_t) \
@@ -233,6 +242,7 @@ typedef int32_t (*iFppipppp_t)(void*, void*, int32_t, void*, void*, void*, void*
 	GO(__fcntl, iFiiN_t) \
 	GO(fcntl, iFiiN_t) \
 	GO(fcntl64, iFiiN_t) \
+	GO(unlinkat, iFipi_t) \
 	GO(open_tree, iFipu_t) \
 	GO(__lxstat, iFipp_t) \
 	GO(__lxstat64, iFipp_t) \
@@ -245,6 +255,8 @@ typedef int32_t (*iFppipppp_t)(void*, void*, int32_t, void*, void*, void*, void*
 	GO(__printf_chk, iFipV_t) \
 	GO(dprintf, iFipV_t) \
 	GO(vdprintf, iFipA_t) \
+	GO(mkostemps, iFpii_t) \
+	GO(mkostemps64, iFpii_t) \
 	GO(mprotect, iFpLi_t) \
 	GO(init_module, iFpLp_t) \
 	GO(ftw, iFppi_t) \

@@ -1091,6 +1091,7 @@
 #() iFEiiu
 #() iFEiip
 #() iFEiiN
+#() iFEipi
 #() iFEipu
 #() iFEipp
 #() iFEipV
@@ -5009,11 +5010,14 @@ wrappedlibc:
   - _setjmp
   - atexit
   - getcontext
+  - mkstemp
+  - mkstemp64
   - register_printf_type
   - setcontext
   - setjmp
   - stime
   - uname
+  - unlink
 - CFp:
   - _ITM_RU1
 - uFp:
@@ -5067,6 +5071,10 @@ wrappedlibc:
 - iFpi:
   - __sigsetjmp
   - backtrace
+  - mkostemp
+  - mkostemp64
+  - mkstemps
+  - mkstemps64
   - sigsetjmp
 - iFpu:
   - delete_module
@@ -5142,6 +5150,8 @@ wrappedlibc:
   - __fcntl
   - fcntl
   - fcntl64
+- iFipi:
+  - unlinkat
 - iFipu:
   - open_tree
 - iFipp:
@@ -5158,6 +5168,9 @@ wrappedlibc:
   - dprintf
 - iFipA:
   - vdprintf
+- iFpii:
+  - mkostemps
+  - mkostemps64
 - iFpLi:
   - mprotect
 - iFpLp:

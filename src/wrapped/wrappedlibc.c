@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
+#include <limits.h>
 #include <wchar.h>
 #include <dlfcn.h>
 #include <signal.h>
@@ -1959,6 +1960,158 @@ EXPORT int32_t my_open(x64emu_t* emu, void* pathname, int32_t flags, uint32_t mo
     return ret;
 }
 EXPORT int32_t my___open(x64emu_t* emu, void* pathname, int32_t flags, uint32_t mode) __attribute__((alias("my_open")));
+
+// mkstemp wrapper for Android - translate /tmp paths to actual temp directory
+EXPORT int my_mkstemp(x64emu_t* emu, char* template)
+{
+    (void)emu;
+    if(!template) return -1;
+    
+    // Check if path starts with /tmp
+    if(strncmp(template, "/tmp/", 5) == 0) {
+        const char* tmpdir = GetTmpDir();
+        char translated[PATH_MAX];
+        snprintf(translated, sizeof(translated), "%s%s", tmpdir, template + 4);
+        
+        struct stat st;
+        if(stat(tmpdir, &st) != 0) {
+            mkdir(tmpdir, 0755);
+        }
+        
+        int fd = mkstemp(translated);
+        if(fd >= 0) {
+            size_t tmpdir_len = strlen(tmpdir);
+            strcpy(template + 4, translated + tmpdir_len);
+        }
+        return fd;
+    }
+    return mkstemp(template);
+}
+
+EXPORT int my_mkstemp64(x64emu_t* emu, char* template)
+{
+    return my_mkstemp(emu, template);
+}
+
+EXPORT int my_mkostemp(x64emu_t* emu, char* template, int flags)
+{
+    (void)emu;
+    if(!template) return -1;
+    
+    if(strncmp(template, "/tmp/", 5) == 0) {
+        const char* tmpdir = GetTmpDir();
+        char translated[PATH_MAX];
+        snprintf(translated, sizeof(translated), "%s%s", tmpdir, template + 4);
+        
+        struct stat st;
+        if(stat(tmpdir, &st) != 0) {
+            mkdir(tmpdir, 0755);
+        }
+        
+        int fd = mkostemp(translated, flags);
+        if(fd >= 0) {
+            size_t tmpdir_len = strlen(tmpdir);
+            strcpy(template + 4, translated + tmpdir_len);
+        }
+        return fd;
+    }
+    return mkostemp(template, flags);
+}
+
+EXPORT int my_mkostemp64(x64emu_t* emu, char* template, int flags)
+{
+    return my_mkostemp(emu, template, flags);
+}
+
+EXPORT int my_mkstemps(x64emu_t* emu, char* template, int suffixlen)
+{
+    (void)emu;
+    if(!template) return -1;
+    
+    if(strncmp(template, "/tmp/", 5) == 0) {
+        const char* tmpdir = GetTmpDir();
+        char translated[PATH_MAX];
+        snprintf(translated, sizeof(translated), "%s%s", tmpdir, template + 4);
+        
+        struct stat st;
+        if(stat(tmpdir, &st) != 0) {
+            mkdir(tmpdir, 0755);
+        }
+        
+        int fd = mkstemps(translated, suffixlen);
+        if(fd >= 0) {
+            size_t tmpdir_len = strlen(tmpdir);
+            strcpy(template + 4, translated + tmpdir_len);
+        }
+        return fd;
+    }
+    return mkstemps(template, suffixlen);
+}
+
+EXPORT int my_mkstemps64(x64emu_t* emu, char* template, int suffixlen)
+{
+    return my_mkstemps(emu, template, suffixlen);
+}
+
+EXPORT int my_mkostemps(x64emu_t* emu, char* template, int suffixlen, int flags)
+{
+    (void)emu;
+    if(!template) return -1;
+    
+    if(strncmp(template, "/tmp/", 5) == 0) {
+        const char* tmpdir = GetTmpDir();
+        char translated[PATH_MAX];
+        snprintf(translated, sizeof(translated), "%s%s", tmpdir, template + 4);
+        
+        struct stat st;
+        if(stat(tmpdir, &st) != 0) {
+            mkdir(tmpdir, 0755);
+        }
+        
+        int fd = mkostemps(translated, suffixlen, flags);
+        if(fd >= 0) {
+            size_t tmpdir_len = strlen(tmpdir);
+            strcpy(template + 4, translated + tmpdir_len);
+        }
+        return fd;
+    }
+    return mkostemps(template, suffixlen, flags);
+}
+
+EXPORT int my_mkostemps64(x64emu_t* emu, char* template, int suffixlen, int flags)
+{
+    return my_mkostemps(emu, template, suffixlen, flags);
+}
+
+// unlink wrapper for Android - translate /tmp paths
+EXPORT int my_unlink(x64emu_t* emu, const char* pathname)
+{
+    (void)emu;
+    if(!pathname) return -1;
+    
+    if(strncmp(pathname, "/tmp/", 5) == 0) {
+        const char* tmpdir = GetTmpDir();
+        char translated[PATH_MAX];
+        snprintf(translated, sizeof(translated), "%s%s", tmpdir, pathname + 4);
+        return unlink(translated);
+    }
+    return unlink(pathname);
+}
+
+// unlinkat wrapper for Android - translate /tmp paths
+EXPORT int my_unlinkat(x64emu_t* emu, int dirfd, const char* pathname, int flags)
+{
+    (void)emu;
+    if(!pathname) return -1;
+    
+    if(pathname[0] == '/' && strncmp(pathname, "/tmp/", 5) == 0) {
+        const char* tmpdir = GetTmpDir();
+        char translated[PATH_MAX];
+        snprintf(translated, sizeof(translated), "%s%s", tmpdir, pathname + 4);
+        return unlinkat(dirfd, translated, flags);
+    }
+    return unlinkat(dirfd, pathname, flags);
+}
 
 //#ifdef DYNAREC
 //static int hasDBFromAddress(uintptr_t addr)
