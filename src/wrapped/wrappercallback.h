@@ -1,3 +1,20 @@
+/* Include BOX64_DLSYM macro from wrappedlib_init.h */
+#ifndef BOX64_DLSYM
+#ifdef __ANDROID__
+typedef void* (*glibc_bridge_dlsym_fn)(void* handle, const char* symbol);
+extern glibc_bridge_dlsym_fn box64_glibc_bridge_dlsym_hook;
+static inline void* box64_native_dlsym_cb(void* handle, const char* symbol) {
+    if (box64_glibc_bridge_dlsym_hook) {
+        return box64_glibc_bridge_dlsym_hook(handle, symbol);
+    }
+    return dlsym(handle, symbol);
+}
+#define BOX64_DLSYM(handle, symbol) box64_native_dlsym_cb(handle, symbol)
+#else
+#define BOX64_DLSYM(handle, symbol) dlsym(handle, symbol)
+#endif
+#endif
+
 #define TYPENAME3(N,M) N##M
 #define TYPENAME2(N,M) TYPENAME3(N,M)
 #define TYPENAME(N) TYPENAME2(LIBNAME, _my_t)
@@ -18,7 +35,7 @@ static TYPENAME(LIBNAME) * const my = &TYPENAME2(my_, LIBNAME);
 
 static void getMy(library_t* lib)
 {
-    #define GO(A, W) my->A = (W)dlsym(lib->w.lib, #A);
+    #define GO(A, W) my->A = (W)BOX64_DLSYM(lib->w.lib, #A);
     SUPER()
     #undef GO
     my_lib = lib;

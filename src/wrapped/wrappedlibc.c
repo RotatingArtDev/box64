@@ -1601,7 +1601,7 @@ EXPORT void* my_readdir(x64emu_t* emu, void* dirp)
         if(!f) {
             library_t* lib = my_lib;
             if(!lib) return NULL;
-            f = (pFp_t)dlsym(lib->w.lib, "readdir");
+            f = (pFp_t)BOX64_DLSYM(lib->w.lib, "readdir");
         }
 
         return f(dirp);
@@ -1621,7 +1621,7 @@ EXPORT int32_t my_readdir_r(x64emu_t* emu, void* dirp, void* entry, void** resul
                 *result = NULL;
                 return 0;
             }
-            f = (iFppp_t)dlsym(lib->w.lib, "readdir64_r");
+            f = (iFppp_t)BOX64_DLSYM(lib->w.lib, "readdir64_r");
         }
 
         int r = f(dirp, &d64, &dp64);
@@ -1657,7 +1657,7 @@ EXPORT int32_t my_readdir_r(x64emu_t* emu, void* dirp, void* entry, void** resul
                 *result = NULL;
                 return 0;
             }
-            f = (iFppp_t)dlsym(lib->w.lib, "readdir_r");
+            f = (iFppp_t)BOX64_DLSYM(lib->w.lib, "readdir_r");
         }
 
         return f(dirp, entry, result);
@@ -2317,7 +2317,7 @@ EXPORT int32_t my_ftw(x64emu_t* emu, void* pathname, void* B, int32_t nopenfd)
     if(!f) {
         library_t* lib = my_lib;
         if(!lib) return 0;
-        f = (iFppi_t)dlsym(lib->w.lib, "ftw");
+        f = (iFppi_t)BOX64_DLSYM(lib->w.lib, "ftw");
     }
 
     return f(pathname, findftwFct(B), nopenfd);
@@ -2982,7 +2982,7 @@ EXPORT int32_t my_preadv64(x64emu_t* emu, int32_t fd, void* v, int32_t c, int64_
 {
     library_t* lib = my_lib;
     if(!lib) return 0;
-    void* f = dlsym(lib->w.lib, "preadv64");
+    void* f = BOX64_DLSYM(lib->w.lib, "preadv64");
     if(f)
         return ((iFipiI_t)f)(fd, v, c, o);
     return syscall(__NR_preadv, fd, v, c,(uint32_t)(o&0xffffffff), (uint32_t)((o>>32)&0xffffffff));
@@ -2992,7 +2992,7 @@ EXPORT int32_t my_pwritev64(x64emu_t* emu, int32_t fd, void* v, int32_t c, int64
 {
     library_t* lib = my_lib;
     if(!lib) return 0;
-    void* f = dlsym(lib->w.lib, "pwritev64");
+    void* f = BOX64_DLSYM(lib->w.lib, "pwritev64");
     if(f)
         return ((iFipiI_t)f)(fd, v, c, o);
     #ifdef __arm__
@@ -3007,7 +3007,7 @@ EXPORT int32_t my_accept4(x64emu_t* emu, int32_t fd, void* a, void* l, int32_t f
 {
     library_t* lib = my_lib;
     if(!lib) return 0;
-    void* f = dlsym(lib->w.lib, "accept4");
+    void* f = BOX64_DLSYM(lib->w.lib, "accept4");
     if(f)
         return ((iFippi_t)f)(fd, a, l, flags);
     if(!flags)
@@ -3021,7 +3021,7 @@ EXPORT  int32_t my_fallocate64(int fd, int mode, int64_t offs, int64_t len)
     static int done = 0;
     if(!done) {
         library_t* lib = my_lib;
-        f = (iFiiII_t)dlsym(lib->w.lib, "fallocate64");
+        f = (iFiiII_t)BOX64_DLSYM(lib->w.lib, "fallocate64");
         done = 1;
     }
     if(f)
@@ -3374,7 +3374,7 @@ EXPORT void* my_mallinfo(x64emu_t* emu, void* p)
     static int inited = 0;
     if(!inited) {
         inited = 1;
-        f = (mallinfo_fnc)dlsym(my_lib->w.lib, "mallinfo");
+        f = (mallinfo_fnc)BOX64_DLSYM(my_lib->w.lib, "mallinfo");
     }
     if(f)
         *(struct mallinfo*)p=f();
@@ -3403,7 +3403,7 @@ EXPORT void* my_mallinfo2(x64emu_t* emu, void* p)
     static int inited = 0;
     if(!inited) {
         inited = 1;
-        f = (mallinfo2_fnc)dlsym(my_lib->w.lib, "mallinfo2");
+        f = (mallinfo2_fnc)BOX64_DLSYM(my_lib->w.lib, "mallinfo2");
     }
     if(f)
         *(struct my_mallinfo2_s*)p = f();
@@ -3521,7 +3521,7 @@ EXPORT int my___libc_alloca_cutoff(x64emu_t* emu, size_t size)
     // not always implemented on old linux version...
     library_t* lib = my_lib;
     if(!lib) return 0;
-    void* f = dlsym(lib->w.lib, "__libc_alloca_cutoff");
+    void* f = BOX64_DLSYM(lib->w.lib, "__libc_alloca_cutoff");
     if(f)
         return ((iFL_t)f)(size);
     // approximate version but it's better than nothing....
@@ -3632,7 +3632,7 @@ EXPORT int my_getentropy(x64emu_t* emu, void* buffer, size_t length)
 {
     library_t* lib = my_lib;
     if(!lib) return 0;
-    void* f = dlsym(lib->w.lib, "getentropy");
+    void* f = BOX64_DLSYM(lib->w.lib, "getentropy");
     if(f)
         return ((iFpL_t)f)(buffer, length);
     // custom implementation

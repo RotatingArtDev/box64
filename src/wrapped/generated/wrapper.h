@@ -228,7 +228,6 @@ void cFpi(x64emu_t *emu, uintptr_t fnc);
 void cFpp(x64emu_t *emu, uintptr_t fnc);
 void wFpi(x64emu_t *emu, uintptr_t fnc);
 void iFEi(x64emu_t *emu, uintptr_t fnc);
-void iFEu(x64emu_t *emu, uintptr_t fnc);
 void iFEf(x64emu_t *emu, uintptr_t fnc);
 void iFEd(x64emu_t *emu, uintptr_t fnc);
 void iFEL(x64emu_t *emu, uintptr_t fnc);

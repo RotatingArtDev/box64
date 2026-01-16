@@ -65,16 +65,16 @@ void* my_wrap_xmlMemStrdup(void* p)
 
 #define ADDED_INIT() \
     void** p;                                                                                               \
-    p=dlsym(lib->w.lib, "xmlFree");                                                                         \
+    p=BOX64_DLSYM(lib->w.lib, "xmlFree");                                                                         \
         my_xmlFree = (p && *p)?AddCheckBridge(lib->w.bridge, vFp, *p, 0, "my_wrap_xmlFree"):0;              \
         if(p) *p = my_wrap_xmlFree;                                                                         \
-    p=dlsym(lib->w.lib, "xmlMalloc");                                                                       \
+    p=BOX64_DLSYM(lib->w.lib, "xmlMalloc");                                                                       \
         my_xmlMalloc = (p && *p)?AddCheckBridge(lib->w.bridge, pFL, *p, 0, "my_wrap_xmlMalloc"):0;          \
         if(p) *p = my_wrap_xmlMalloc;                                                                       \
-    p=dlsym(lib->w.lib, "xmlRealloc");                                                                      \
+    p=BOX64_DLSYM(lib->w.lib, "xmlRealloc");                                                                      \
         my_xmlRealloc = (p && *p)?AddCheckBridge(lib->w.bridge, pFpL, *p, 0, "my_wrap_xmlRealloc"):0;       \
         if(p) *p = my_wrap_xmlRealloc;                                                                      \
-    p=dlsym(lib->w.lib, "xmlMemStrdup");                                                                    \
+    p=BOX64_DLSYM(lib->w.lib, "xmlMemStrdup");                                                                    \
         my_xmlMemStrdup = (p && *p)?AddCheckBridge(lib->w.bridge, pFp, *p, 0, "my_wrap_xmlMemStrdup"):0;    \
         if(p) *p = my_wrap_xmlMemStrdup;
 

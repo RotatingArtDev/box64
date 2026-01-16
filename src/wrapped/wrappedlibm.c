@@ -16,6 +16,23 @@
 #include "debug.h"
 #include "emu/x64emu_private.h"
 
+/* BOX64_DLSYM for Android glibc_bridge integration */
+#ifndef BOX64_DLSYM
+#ifdef __ANDROID__
+typedef void* (*glibc_bridge_dlsym_fn)(void* handle, const char* symbol);
+extern glibc_bridge_dlsym_fn box64_glibc_bridge_dlsym_hook;
+static inline void* box64_native_dlsym_libm(void* handle, const char* symbol) {
+    if (box64_glibc_bridge_dlsym_hook) {
+        return box64_glibc_bridge_dlsym_hook(handle, symbol);
+    }
+    return dlsym(handle, symbol);
+}
+#define BOX64_DLSYM(handle, symbol) box64_native_dlsym_libm(handle, symbol)
+#else
+#define BOX64_DLSYM(handle, symbol) dlsym(handle, symbol)
+#endif
+#endif
+
 const char* libmName = "libm.so.6";
 #define ALTNAME "libm.so"
 
@@ -39,7 +56,7 @@ EXPORT R my___##N##_finite P        \
     static int check = 0;           \
     T f = NULL;                     \
     if(!check) {                    \
-        f = (T)dlsym(my_lib->w.lib, "__" #N "_finite");  \
+        f = (T)BOX64_DLSYM(my_lib->w.lib, "__" #N "_finite");  \
         ++check;                    \
     }                               \
     if(f)                           \

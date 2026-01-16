@@ -47,8 +47,9 @@
 typedef void* (*glibc_bridge_dlopen_fn)(const char* filename, int flags);
 typedef void* (*glibc_bridge_dlsym_fn)(void* handle, const char* symbol);
 
-/* Global hook for wrapped library init (used in wrappedlib_init.h) */
+/* Global hooks for wrapped library init (used in wrappedlib_init.h) */
 glibc_bridge_dlopen_fn box64_glibc_bridge_dlopen_hook = NULL;
+glibc_bridge_dlsym_fn box64_glibc_bridge_dlsym_hook = NULL;
 
 static glibc_bridge_dlopen_fn g_glibc_bridge_dlopen = NULL;
 static glibc_bridge_dlsym_fn g_glibc_bridge_dlsym = NULL;
@@ -59,6 +60,7 @@ void box64_set_glibc_bridge_hooks(glibc_bridge_dlopen_fn dlopen_hook, glibc_brid
     g_glibc_bridge_dlopen = dlopen_hook;
     g_glibc_bridge_dlsym = dlsym_hook;
     box64_glibc_bridge_dlopen_hook = dlopen_hook;  /* Also set the wrappedlib_init hook */
+    box64_glibc_bridge_dlsym_hook = dlsym_hook;    /* Also set the wrappedlib_init hook */
     GLIBC_BRIDGE_LOGI("glibc_bridge hooks installed: dlopen=%p, dlsym=%p", dlopen_hook, dlsym_hook);
 }
 #endif

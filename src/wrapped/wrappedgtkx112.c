@@ -1246,7 +1246,7 @@ EXPORT uint32_t my_gtk_key_snooper_install(x64emu_t* emu, void* f, void* data)
 
 static void addGtk2Alternate(library_t* lib)
 {
-    #define GO(A, W) AddAutomaticBridge(lib->w.bridge, W, dlsym(lib->w.lib, #A), 0, #A)
+    #define GO(A, W) AddAutomaticBridge(lib->w.bridge, W, BOX64_DLSYM(lib->w.lib, #A), 0, #A)
     GO(gtk_marshal_BOOLEAN__POINTER,                            vFppuppp);
     GO(gtk_marshal_BOOLEAN__POINTER_INT_INT,                    vFppuppp);
     GO(gtk_marshal_BOOLEAN__POINTER_INT_INT_UINT,               vFppuppp);

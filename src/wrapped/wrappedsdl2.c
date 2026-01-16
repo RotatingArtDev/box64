@@ -22,17 +22,6 @@
 
 #include "generated/wrappedsdl2defs.h"
 
-// SDL2 initialization flags (from box64droid)
-#define SDL_INIT_TIMER          0x00000001
-#define SDL_INIT_AUDIO          0x00000010
-#define SDL_INIT_VIDEO          0x00000020
-#define SDL_INIT_JOYSTICK       0x00000200
-#define SDL_INIT_HAPTIC         0x00001000
-#define SDL_INIT_GAMECONTROLLER 0x00002000
-#define SDL_INIT_EVENTS         0x00004000
-#define SDL_INIT_SENSOR         0x00008000
-#define SDL_INIT_NOPARACHUTE    0x00100000
-
 // Use Android native SDL2 (ARM64) through Box64 wrapping
 #ifdef __ANDROID__
 const char* sdl2Name = "libSDL2.so";
@@ -148,12 +137,12 @@ static void* find_Timer_Fct(void* fct)
     return NULL;
 
 }
-// AudioCallback
+// AudioCallback - original Box64 implementation
 #define GO(A)   \
 static uintptr_t my_AudioCallback_fct_##A = 0;                      \
 static void my_AudioCallback_##A(void* a, void* b, int c)           \
 {                                                                   \
-    RunFunctionFmt(my_AudioCallback_fct_##A, "ppi", a, b, c);  \
+    RunFunctionFmt(my_AudioCallback_fct_##A, "ppi", a, b, c);       \
 }
 SUPER()
 #undef GO
@@ -165,7 +154,7 @@ static void* find_AudioCallback_Fct(void* fct)
     #define GO(A) if(my_AudioCallback_fct_##A == (uintptr_t)fct) return my_AudioCallback_##A;
     SUPER()
     #undef GO
-    #define GO(A) if(my_AudioCallback_fct_##A == 0) {my_AudioCallback_fct_##A = (uintptr_t)fct; return my_AudioCallback_##A; }
+    #define GO(A) if(my_AudioCallback_fct_##A == 0) {my_AudioCallback_fct_##A = (uintptr_t)fct; printf_log(LOG_INFO, "[SDL_AUDIO] Registered AudioCallback slot %d for fct 0x%lx\n", A, (unsigned long)fct); return my_AudioCallback_##A; }
     SUPER()
     #undef GO
     printf_log(LOG_NONE, "Warning, no more slot for SDL2 AudioCallback callback\n");
@@ -299,10 +288,28 @@ EXPORT uint32_t my2_SDL_OpenAudioDevice(x64emu_t* emu, void* device, int iscaptu
 {
     SDL2_AudioSpec* desired = (SDL2_AudioSpec*)d;
 
+    printf_log(LOG_INFO, "[SDL_AUDIO] SDL_OpenAudioDevice: requested freq=%d, format=0x%x, channels=%d, allowed=%d\n",
+        desired->freq, desired->format, desired->channels, allowed);
+
     // create a callback
     void* fnc = (void*)desired->callback;
     desired->callback = find_AudioCallback_Fct(fnc);
+    
+#ifdef __ANDROID__
+    // Android: Force allow frequency changes so SDL can handle resampling internally
+    // This fixes audio distortion when device native rate (48000Hz) differs from requested (44100Hz)
+    // SDL_AUDIO_ALLOW_FREQUENCY_CHANGE = 0x01
+    // SDL_AUDIO_ALLOW_FORMAT_CHANGE = 0x02
+    // SDL_AUDIO_ALLOW_CHANNELS_CHANGE = 0x04
+    if(allowed == 0) {
+        allowed = 0x01;  // Allow frequency change only
+        printf_log(LOG_INFO, "[SDL_AUDIO] Forcing allowed=0x01 for SDL internal resampling\n");
+    }
+#endif
+    
     uint32_t ret = my->SDL_OpenAudioDevice(device, iscapture, desired, (SDL2_AudioSpec*)o, allowed);
+    
+    printf_log(LOG_INFO, "[SDL_AUDIO] SDL_OpenAudioDevice returned: %u\n", ret);
 
     // put back stuff in place?
     desired->callback = fnc;
@@ -913,77 +920,6 @@ EXPORT void my2_SDL_FilterEvents(x64emu_t* emu, void* filter, void* userdata) {
         .userdata = userdata,
     };
     my->SDL_FilterEvents(my_FilterEvents_callback, &data);
-}
-
-// Android: SDL_InitSubSystem wrapper - logs and passes through
-EXPORT int my2_SDL_InitSubSystem(uint32_t flags)
-{
-    printf_log(LOG_INFO, "[SDL_FIX] SDL_InitSubSystem called with flags = 0x%08x\n", flags);
-    
-    if (flags & SDL_INIT_AUDIO) {
-        printf_log(LOG_INFO, "[SDL_FIX]   >>> SDL_INIT_AUDIO requested\n");
-    }
-    if (flags & SDL_INIT_VIDEO) {
-        printf_log(LOG_INFO, "[SDL_FIX]   >>> SDL_INIT_VIDEO requested\n");
-    }
-    
-    int result = my->SDL_InitSubSystem(flags);
-    printf_log(LOG_INFO, "[SDL_FIX]   SDL_InitSubSystem returned: %d\n", result);
-    return result;
-}
-
-// Custom SDL_Init wrapper to setup JNI for Box64 thread
-// This is CRITICAL for Android - ensures JNI environment is ready before SDL tries to use it
-EXPORT int my2_SDL_Init(x64emu_t* emu, uint32_t flags)
-{
-    static int first_call = 1;
-    static int audio_preinitialized = 0;
-    
-    printf_log(LOG_INFO, "[SDL_FIX] my2_SDL_Init called with flags = 0x%08x\n", flags);
-    
-    if(first_call) {
-        first_call = 0;
-        
-        // Try to get JNIEnv to trigger JNI thread setup
-        // This ensures the JNI environment is attached to this thread BEFORE
-        // SDL_getenv tries to call Android_JNI_GetManifestEnvironmentVariables
-        void* (*sdl_android_getjnienv)() = (void*(*)())dlsym(my_context->sdl2lib->w.lib, "SDL_AndroidGetJNIEnv");
-        if(sdl_android_getjnienv) {
-            void* env = sdl_android_getjnienv();
-            printf_log(LOG_INFO, "[SDL_FIX] SDL_AndroidGetJNIEnv returned %p\n", env);
-        } else {
-            printf_log(LOG_INFO, "[SDL_FIX] SDL_AndroidGetJNIEnv not found\n");
-        }
-        
-        // Call SDL_SetMainReady to bypass SDL_main requirement
-        // This tells SDL that we're not using SDL_main, which is the case
-        // when running through Box64
-        void (*sdl_setmainready)() = (void(*)())dlsym(my_context->sdl2lib->w.lib, "SDL_SetMainReady");
-        if(sdl_setmainready) {
-            sdl_setmainready();
-            printf_log(LOG_INFO, "[SDL_FIX] SDL_SetMainReady called\n");
-        }
-        
-#ifdef __ANDROID__
-        // Pre-initialize native SDL audio system before game calls SDL_Init
-        // This ensures the native SDL audio subsystem is fully set up before
-        // Box64 tries to create audio callback bridges
-        printf_log(LOG_INFO, "[SDL_AUDIO] Pre-initializing native SDL audio subsystem...\n");
-        int audio_init_result = my->SDL_Init(SDL_INIT_AUDIO);
-        if(audio_init_result == 0) {
-            printf_log(LOG_INFO, "[SDL_AUDIO] ✓ Native SDL audio pre-initialized successfully\n");
-            audio_preinitialized = 1;
-        } else {
-            printf_log(LOG_INFO, "[SDL_AUDIO] ✗ Native SDL audio pre-initialization failed: %d\n", audio_init_result);
-        }
-#endif
-    }
-    
-    // Call the real SDL_Init with the game's requested flags
-    int ret = my->SDL_Init(flags);
-    printf_log(LOG_INFO, "[SDL_FIX] SDL_Init(0x%x) returned %d (audio_preinitialized=%d)\n", 
-               flags, ret, audio_preinitialized);
-    return ret;
 }
 
 #undef HAS_MY

@@ -12,10 +12,12 @@
  * When Box64 runs as a Bionic native library, we still want to use glibc_bridge's
  * library redirection (SDL2 -> libSDL2.so, GL -> gl4es, ICU -> Android ICU, etc.)
  * 
- * This allows glibc_bridge to intercept dlopen calls from Box64's wrapped libraries.
+ * This allows glibc_bridge to intercept dlopen/dlsym calls from Box64's wrapped libraries.
  * ============================================================================ */
 typedef void* (*glibc_bridge_dlopen_fn)(const char* filename, int flags);
+typedef void* (*glibc_bridge_dlsym_fn)(void* handle, const char* symbol);
 extern glibc_bridge_dlopen_fn box64_glibc_bridge_dlopen_hook;
+extern glibc_bridge_dlsym_fn box64_glibc_bridge_dlsym_hook;
 
 static inline void* box64_native_dlopen(const char* filename, int flags) {
     if (box64_glibc_bridge_dlopen_hook) {
@@ -23,9 +25,19 @@ static inline void* box64_native_dlopen(const char* filename, int flags) {
     }
     return dlopen(filename, flags);
 }
+
+static inline void* box64_native_dlsym(void* handle, const char* symbol) {
+    if (box64_glibc_bridge_dlsym_hook) {
+        return box64_glibc_bridge_dlsym_hook(handle, symbol);
+    }
+    return dlsym(handle, symbol);
+}
+
 #define BOX64_DLOPEN(name, flags) box64_native_dlopen(name, flags)
+#define BOX64_DLSYM(handle, symbol) box64_native_dlsym(handle, symbol)
 #else
 #define BOX64_DLOPEN(name, flags) dlopen(name, flags)
+#define BOX64_DLSYM(handle, symbol) dlsym(handle, symbol)
 #endif
 
 #define FUNC3(M,N) wrapped##M##N

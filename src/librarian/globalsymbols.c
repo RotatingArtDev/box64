@@ -7,6 +7,19 @@
 #include "wrappedlibs.h"
 
 #include "debug.h"
+
+/* BOX64_DLSYM for Android glibc_bridge integration */
+#if defined(ANDROID) && defined(BOX64_AS_LIB)
+typedef void* (*glibc_bridge_dlsym_fn_gs)(void* handle, const char* symbol);
+extern glibc_bridge_dlsym_fn_gs box64_glibc_bridge_dlsym_hook;
+static inline void* box64_gs_dlsym(void* handle, const char* symbol) {
+    if (box64_glibc_bridge_dlsym_hook) return box64_glibc_bridge_dlsym_hook(handle, symbol);
+    return dlsym(handle, symbol);
+}
+#define GS_DLSYM(handle, symbol) box64_gs_dlsym(handle, symbol)
+#else
+#define GS_DLSYM(handle, symbol) dlsym(handle, symbol)
+#endif
 #include "wrapper.h"
 #include "bridge.h"
 #include "callback.h"
@@ -65,7 +78,7 @@ void** my_GetGTKDisplay()
     char* name = getGDKX11LibName();
     library_t * lib = GetLibInternal(name?name:"libgdk-x11-2.0.so.0");
     if(!lib) return &gdk_display;   // mmm, that will crash later probably
-    void* s = dlsym(GetHandle(lib), "gdk_display");
+    void* s = GS_DLSYM(GetHandle(lib), "gdk_display");
     gdk_display = *(void**)s;
     return s;
 }

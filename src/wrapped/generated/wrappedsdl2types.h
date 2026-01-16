@@ -13,7 +13,6 @@
 
 typedef void (*vFp_t)(void*);
 typedef int32_t (*iFv_t)(void);
-typedef int32_t (*iFu_t)(uint32_t);
 typedef int32_t (*iFp_t)(void*);
 typedef int64_t (*IFp_t)(void*);
 typedef uint32_t (*uFp_t)(void*);
@@ -67,8 +66,6 @@ typedef void* (*pFpippp_t)(void*, int32_t, void*, void*, void*);
 	GO(SDL_HasSSE3, iFv_t) \
 	GO(SDL_HasSSE41, iFv_t) \
 	GO(SDL_HasSSE42, iFv_t) \
-	GO(SDL_Init, iFu_t) \
-	GO(SDL_InitSubSystem, iFu_t) \
 	GO(SDL_RWclose, iFp_t) \
 	GO(SDL_RemoveTimer, iFp_t) \
 	GO(SDL_SaveAllDollarTemplates, iFp_t) \

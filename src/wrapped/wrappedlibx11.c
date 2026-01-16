@@ -1670,8 +1670,8 @@ EXPORT int my_XCloseDisplay(x64emu_t* emu, void* dpy)
 }
 
 #define CUSTOM_INIT                 \
-    AddAutomaticBridge(lib->w.bridge, vFp, *(void**)dlsym(lib->w.lib, "_XLockMutex_fn"), 0, "_XLockMutex_fn"); \
-    AddAutomaticBridge(lib->w.bridge, vFp, *(void**)dlsym(lib->w.lib, "_XUnlockMutex_fn"), 0, "_XUnlockMutex_fn"); \
+    AddAutomaticBridge(lib->w.bridge, vFp, *(void**)BOX64_DLSYM(lib->w.lib, "_XLockMutex_fn"), 0, "_XLockMutex_fn"); \
+    AddAutomaticBridge(lib->w.bridge, vFp, *(void**)BOX64_DLSYM(lib->w.lib, "_XUnlockMutex_fn"), 0, "_XUnlockMutex_fn"); \
     if(BOX64ENV(x11threads)) my->XInitThreads();
 
 #define NEEDED_LIBS "libxcb.so.1"

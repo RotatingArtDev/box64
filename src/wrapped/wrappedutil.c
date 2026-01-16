@@ -14,6 +14,21 @@
 #include "callback.h"
 #include "librarian.h"
 #include "librarian/library_private.h"
+
+/* BOX64_DLSYM for Android glibc_bridge integration */
+#ifndef BOX64_DLSYM
+#ifdef __ANDROID__
+typedef void* (*glibc_bridge_dlsym_fn_util)(void* handle, const char* symbol);
+extern glibc_bridge_dlsym_fn_util box64_glibc_bridge_dlsym_hook;
+static inline void* box64_native_dlsym_util(void* handle, const char* symbol) {
+    if (box64_glibc_bridge_dlsym_hook) return box64_glibc_bridge_dlsym_hook(handle, symbol);
+    return dlsym(handle, symbol);
+}
+#define BOX64_DLSYM(handle, symbol) box64_native_dlsym_util(handle, symbol)
+#else
+#define BOX64_DLSYM(handle, symbol) dlsym(handle, symbol)
+#endif
+#endif
 #include "emu/x64emu_private.h"
 #include "box64context.h"
 
@@ -28,7 +43,7 @@ EXPORT pid_t my_forkpty(x64emu_t* emu, void* amaster, void* name, void* termp, v
     forkinfo.termp = termp;
     forkinfo.winp = winp;
     library_t* lib = GetLibInternal(utilName);
-    forkinfo.f = dlsym(lib->w.lib, "forkpty");
+    forkinfo.f = BOX64_DLSYM(lib->w.lib, "forkpty");
     
     emu->quit = 1;
     emu->fork = 2;

@@ -371,8 +371,8 @@ GO(SDL_iconv, LFppppp)
 GO(SDL_iconv_close, iFp)
 GO(SDL_iconv_open, pFpp)
 GO(SDL_iconv_string, pFpppL)
-GOM(SDL_Init, iFEu)              // Android: wrapper to setup JNI before SDL uses it
-GOM(SDL_InitSubSystem, iFu)      // Android: wrapper for logging/debugging
+GO(SDL_Init, iFu)
+GO(SDL_InitSubSystem, iFu)
 GO(SDL_IntersectRect, uFppp)
 GO(SDL_IntersectRectAndLine, uFppppp)
 GO(SDL_isdigit, iFi)

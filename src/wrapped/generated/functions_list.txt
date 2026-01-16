@@ -191,7 +191,6 @@
 #() cFpp
 #() wFpi
 #() iFEi
-#() iFEu
 #() iFEf
 #() iFEd
 #() iFEL
@@ -6440,9 +6439,6 @@ wrappedsdl2:
   - SDL_HasSSE3
   - SDL_HasSSE41
   - SDL_HasSSE42
-- iFu:
-  - SDL_Init
-  - SDL_InitSubSystem
 - iFp:
   - SDL_RWclose
   - SDL_RemoveTimer

@@ -43,6 +43,19 @@ static inline glibc_bridge_resolve_symbol_fn get_glibc_bridge_resolver(void) {
     }
     return g_glibc_bridge_resolve;
 }
+
+/* BOX64_DLSYM for library handle - routes to glibc_bridge when needed */
+typedef void* (*glibc_bridge_dlsym_fn_lib)(void* handle, const char* symbol);
+extern glibc_bridge_dlsym_fn_lib box64_glibc_bridge_dlsym_hook;
+static inline void* box64_lib_dlsym(void* handle, const char* symbol) {
+    if (box64_glibc_bridge_dlsym_hook) {
+        return box64_glibc_bridge_dlsym_hook(handle, symbol);
+    }
+    return dlsym(handle, symbol);
+}
+#define LIB_DLSYM(handle, symbol) box64_lib_dlsym(handle, symbol)
+#else
+#define LIB_DLSYM(handle, symbol) dlsym(handle, symbol)
 #endif
 
 // create the native lib list
@@ -812,7 +825,7 @@ static int getSymbolInDataMaps(library_t*lib, const char* name, int noweak, uint
         #ifdef STATICBUILD
         symbol = (void*)(kh_value(lib->w.datamap, k).addr);
         #else
-        symbol = dlsym(lib->w.lib, kh_key(lib->w.datamap, k));
+        symbol = LIB_DLSYM(lib->w.lib, kh_key(lib->w.datamap, k));
         #endif
         if(symbol) {
             // found!
@@ -832,7 +845,7 @@ static int getSymbolInDataMaps(library_t*lib, const char* name, int noweak, uint
             #ifdef STATICBUILD
             symbol = (void*)(kh_value(lib->w.wdatamap, k).addr);
             #else
-            symbol = dlsym(lib->w.lib, kh_key(lib->w.wdatamap, k));
+            symbol = LIB_DLSYM(lib->w.lib, kh_key(lib->w.wdatamap, k));
             #endif
             if(symbol) {
                 // found!
@@ -965,12 +978,12 @@ static int getSymbolInSymbolMaps(library_t*lib, const char* name, int noweak, ui
             #ifdef STATICBUILD
             symbol = (void*)s->addr;
             #else
-            symbol = dlsym(lib->w.lib, name);
+            symbol = LIB_DLSYM(lib->w.lib, name);
             if(!symbol && lib->w.altprefix) {
                 char newname[200];
                 strcpy(newname, lib->w.altprefix);
                 strcat(newname, name);
-                symbol = dlsym(lib->w.lib, newname);
+                symbol = LIB_DLSYM(lib->w.lib, newname);
             }
             if(!symbol)
                 symbol = GetNativeSymbolUnversioned(lib->w.lib, name);
@@ -1043,12 +1056,12 @@ static int getSymbolInSymbolMaps(library_t*lib, const char* name, int noweak, ui
                 #ifdef STATICBUILD
                 symbol = (void*)s->addr;
                 #else
-                symbol = dlsym(lib->w.lib, name);
+                symbol = LIB_DLSYM(lib->w.lib, name);
                 if(!symbol && lib->w.altprefix) {
                     char newname[200];
                     strcpy(newname, lib->w.altprefix);
                     strcat(newname, name);
-                    symbol = dlsym(lib->w.lib, newname);
+                    symbol = LIB_DLSYM(lib->w.lib, newname);
                 }
                 if(!symbol)
                     symbol = GetNativeSymbolUnversioned(lib->w.lib, name);
@@ -1091,7 +1104,7 @@ static int getSymbolInSymbolMaps(library_t*lib, const char* name, int noweak, ui
                 #ifdef STATICBUILD
                 symbol = (void*)s->addr;
                 #else
-                symbol = dlsym(lib->w.lib, kh_value(lib->w.symbol2map, k).name);
+                symbol = LIB_DLSYM(lib->w.lib, kh_value(lib->w.symbol2map, k).name);
                 if(!symbol)
                     symbol = dlsym(RTLD_DEFAULT, kh_value(lib->w.symbol2map, k).name);    // search globaly maybe
                 if(!symbol)

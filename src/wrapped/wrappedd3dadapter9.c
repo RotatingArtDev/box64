@@ -12,6 +12,21 @@
 #include "librarian/library_private.h"
 #include "x64emu.h"
 #include "emu/x64emu_private.h"
+
+/* BOX64_DLSYM for Android glibc_bridge integration */
+#ifndef BOX64_DLSYM
+#ifdef __ANDROID__
+typedef void* (*glibc_bridge_dlsym_fn_d3d)(void* handle, const char* symbol);
+extern glibc_bridge_dlsym_fn_d3d box64_glibc_bridge_dlsym_hook;
+static inline void* box64_native_dlsym_d3d(void* handle, const char* symbol) {
+    if (box64_glibc_bridge_dlsym_hook) return box64_glibc_bridge_dlsym_hook(handle, symbol);
+    return dlsym(handle, symbol);
+}
+#define BOX64_DLSYM(handle, symbol) box64_native_dlsym_d3d(handle, symbol)
+#else
+#define BOX64_DLSYM(handle, symbol) dlsym(handle, symbol)
+#endif
+#endif
 #include "callback.h"
 
 #include "wrappedd3dadapter9_vtable.h"
@@ -215,7 +230,7 @@ GOR((r || !ppQuery), my_CreateQuery, (x64emu_t* emu, void* This, int Type, void*
 
 static void getMy(library_t* lib)
 {
-    my->D3DAdapter9GetProc = (pFp_t)dlsym(lib->w.lib, "D3DAdapter9GetProc");
+    my->D3DAdapter9GetProc = (pFp_t)BOX64_DLSYM(lib->w.lib, "D3DAdapter9GetProc");
 }
 
 static void freeMy()

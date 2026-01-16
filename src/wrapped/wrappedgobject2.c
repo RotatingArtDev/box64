@@ -48,7 +48,7 @@ static void addGObject2Alternate(library_t* lib);
 
 static void addGObject2Alternate(library_t* lib)
 {
-    #define GO(A, W) AddAutomaticBridge(lib->w.bridge, W, dlsym(lib->w.lib, #A), 0, #A)
+    #define GO(A, W) AddAutomaticBridge(lib->w.bridge, W, BOX64_DLSYM(lib->w.lib, #A), 0, #A)
     GO(g_cclosure_marshal_VOID__VOID,               vFppuppp);
     GO(g_cclosure_marshal_VOID__BOOLEAN,            vFppuppp);
     GO(g_cclosure_marshal_VOID__UCHAR,              vFppuppp);
